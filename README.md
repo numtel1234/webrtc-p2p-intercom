@@ -52,7 +52,7 @@ openssl req -newkey rsa:4096 \
 ```bash
 python server.py
 ```
-4. Open the admin panel at `https://<host>:<port>/admin`(**NOT** `http://`, this uri will not connect to the server at all) in a browser. 
+4. Open the admin panel at `https://<host>:<port>/admin`(**NOT** `http://`, this uri will not connect to the server) in a browser. 
 
 After this, you will be prompted for a username and password. Enter the admin credentials set in the `.env` file, and if successful you should enter the admin panel.
 
@@ -68,10 +68,10 @@ After this, you will be prompted for a username and password. Enter the admin cr
 - Simple, easy to audit and run on-premises
 
 # Roadmap
-- [] User role strings
-- [] More admin tools(kick users, mute users)
-- [] Dark mode
-- [] WebRTC shim for server federation
+- [ ] User role strings
+- [ ] More admin tools(kick users, mute users)
+- [ ] Dark mode
+- [ ] WebRTC shim for server federation
 
 # License
 This repo is licensed under the MIT license.
