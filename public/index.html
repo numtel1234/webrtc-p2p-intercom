@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>P2P Wireless Intercom</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background: #f4f6f9;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 1rem;
+            padding-top: max(1rem, env(safe-area-inset-top));
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Desktop side-by-side override */
+        @media (min-width: 820px) {
+            body {
+                flex-direction: row;
+                align-items: flex-start;
+                margin: 2rem;
+                padding: 0;
+            }
+        }
+
+        .sidebar {
+            width: 100%;
+            background: white;
+            padding: 1.2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        @media (min-width: 820px) {
+            .sidebar {
+                width: 280px;
+                position: sticky;
+                top: 2rem;
+            }
+        }
+
+        .sidebar h3 {
+            margin-top: 0;
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        #allUsersList {
+            max-height: 180px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (min-width: 820px) {
+            #allUsersList {
+                max-height: 70vh;
+            }
+        }
+
+        .main {
+            flex-grow: 1;
+            width: 100%;
+        }
+
+        .main h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+        }
+
+        #profileText {
+            margin: 0.5rem 0 1rem 0;
+            font-size: 0.95rem;
+            color: #495057;
+            word-break: break-all;
+        }
+
+        /* Mobile Action Buttons */
+        button {
+            font-family: inherit;
+            padding: 12px 18px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            min-height: 48px;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: transform 0.08s ease, filter 0.15s ease;
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.98);
+            filter: brightness(0.9);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        button#joinBtn {
+            background: #007bff;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        /* Large Touch Target for Push-To-Talk */
+        button#talkBtn {
+            background: #28a745;
+            width: 100%;
+            min-height: 64px;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+            box-shadow: 0 4px 10px rgba(40, 167, 69, 0.25);
+        }
+
+        button#talkBtn.muted {
+            background: #dc3545;
+            box-shadow: 0 4px 10px rgba(220, 53, 69, 0.25);
+        }
+
+        button#toggleModeBtn {
+            background: #6f42c1;
+            width: 100%;
+        }
+
+        div.container {
+            margin-top: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 600px) {
+            button#joinBtn {
+                width: auto;
+                display: inline-block;
+                margin-right: 8px;
+            }
+            button#talkBtn {
+                width: auto;
+                min-width: 200px;
+                display: inline-block;
+            }
+            div.container {
+                display: inline-block;
+                margin-top: 0;
+                margin-left: 8px;
+            }
+            button#toggleModeBtn {
+                width: auto;
+            }
+        }
+
+        /* Active Streams List & Peer Cards */
+        #peersContainer {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (min-width: 720px) {
+            #peersContainer {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            }
+        }
+
+        .peer-card {
+            background: white;
+            padding: 1.2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            width: 100%;
+        }
+
+        .peer-card h4 {
+            margin: 0 0 12px 0;
+            font-size: 1.1rem;
+        }
+
+        .control {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 12px 0;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        /* Touch-friendly range sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 60%;
+            height: 28px; /* Tappable track bounds */
+            background: transparent;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        /* Slider Thumb (iOS/Modern Android friendly) */
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #007bff;
+            border-radius: 50%;
+            margin-top: -7px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            background: #007bff;
+            border: none;
+            border-radius: 50%;
+        }
+
+        .user-badge {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Silent 0-second wav to keep audio context alive on mobile lock -->
+    <audio id="keepAliveAudio" loop playsinline style="display:none;">
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
+    </audio>
+    <div class="sidebar">
+        <h3>Directory (All Users)</h3>
+        <div id="allUsersList">Loading...</div>
+    </div>
+
+    <div class="main">
+        <h2>Channel</h2>
+        <p id="profileText">Ready to connect to the channel.</p>
+        <button id="joinBtn">Join Channel</button>
+        <button id="talkBtn" class="muted">Push to Talk</button>
+        <div class="container"><button id="toggleModeBtn">Mode: </button></div>
+
+        <h3>Active Streams</h3>
+        <div id="peersContainer"></div>
+    </div>
+
+<script>
+    const OPUS_MAX_BITRATE = 32000;
+    // ---------- COOKIE UTILITIES ----------
+    function setCookie(name, val, days = 30) {
+        const d = new Date();
+        d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = `${name}=${encodeURIComponent(val)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+    }
+
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    // Load persisted settings per user: { [userId]: { volume: 1, pan: 0, filter: 10000 } }
+    let userAudioSettings = {};
+    try {
+        userAudioSettings = JSON.parse(getCookie('audio_settings') || '{}');
+    } catch (e) {
+        userAudioSettings = {};
+    }
+
+    function saveSetting(peerId, key, value) {
+        if (!userAudioSettings[peerId]) userAudioSettings[peerId] = { volume: 1.0, pan: 0.0, filter: 10000 };
+        userAudioSettings[peerId][key] = parseFloat(value);
+        setCookie('audio_settings', JSON.stringify(userAudioSettings));
+    }
+
+    // ---------- APPLICATION STATE ----------
+    let myId = null;
+    let myUsername = null;
+    let localStream = null;
+    let ws = null;
+    let wakeLock = null;
+    let audioCtx = null;
+    const peerConnections = {}; // peerId -> { pc, gainNode, panNode, filterNode, username }
+
+    const rtcConfig = {
+    iceServers: [
+        // Public STUN servers
+        {
+            urls: [
+                'stun:stun.l.google.com:19302',
+                'stun:stun1.l.google.com:19302',
+            ],
+        },
+        // TURN server entry
+        {
+            urls: [
+                'turn:global.turn.metered.ca:80',
+                'turn:global.turn.metered.ca:443'
+            ],
+            username: 'e7f3a4b2c1d9e8f6a5b4c3d2e1f0a9b8',
+            credential: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',
+        },
+    ],
+
+    iceCandidatePoolSize: 2, // Pre-gathers candidates to speed up connection setup
+    };
+
+    async function requestWakeLock() {
+        // Check if the browser supports WakeLock and ensure we aren't already holding one
+        if ('wakeLock' in navigator && !wakeLock) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Wake Lock acquired.');
+
+                // If the system releases it (e.g., low battery, switching apps), reset reference
+                wakeLock.addEventListener('release', () => {
+                    console.log('Wake Lock was released.');
+                    wakeLock = null;
+                });
+            } catch (err) {
+                console.warn(`Wake Lock failed: ${err.name}, ${err.message}`);
+            }
+        }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLock !== null) {
+            wakeLock.release();
+            wakeLock = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && localStream) {
+            // Only re-acquire if we are actively connected to a channel
+            await requestWakeLock();
+        }
+    });
+
+    let currentMode = getCookie('intercom_mode') || 'ptt';
+    let isMuted = true;
+
+    const talkBtn = document.getElementById('talkBtn');
+    const toggleModeBtn = document.getElementById('toggleModeBtn');
+
+    function syncMuteUI() {
+        if (localStream) {
+            localStream.getAudioTracks().forEach(track => {
+                track.enabled = !isMuted;
+            });
+        }
+
+        if (isMuted) {
+            talkBtn.classList.remove('active');
+            talkBtn.classList.add('muted');
+            talkBtn.textContent = currentMode === 'ptt' ? 'Hold to Talk' : 'Unmute Mic';
+        } else {
+            talkBtn.classList.remove('muted');
+            talkBtn.classList.add('active');
+            talkBtn.textContent = currentMode === 'ptt' ? 'Transmitting...' : 'Mute Mic';
+        }
+
+        // Persist mute state
+        setCookie('intercom_muted', isMuted);
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        setCookie('intercom_mode', currentMode);
+        toggleModeBtn.textContent = currentMode === 'ptt' ? 'Mode: Push-to-Talk' : 'Mode: Toggle Mute';
+        
+        // PTT defaults to muted for safety when switching modes
+        if (currentMode === 'ptt') {
+            isMuted = true;
+        }
+        syncMuteUI();
+    }
+
+    toggleModeBtn.onclick = () => {
+        setMode(currentMode === 'ptt' ? 'toggle' : 'ptt');
+    };
+
+    function handlePttPress(e) {
+        if (currentMode !== 'ptt' || talkBtn.disabled) return;
+        e.preventDefault();
+        isMuted = false;
+        syncMuteUI();
+    }
+
+    function handlePttRelease(e) {
+        if (currentMode !== 'ptt' || talkBtn.disabled) return;
+        e.preventDefault();
+        isMuted = true;
+        syncMuteUI();
+    }
+
+    talkBtn.addEventListener('mousedown', handlePttPress);
+    talkBtn.addEventListener('mouseup', handlePttRelease);
+
+    talkBtn.addEventListener('touchstart', handlePttPress, { passive: false });
+    talkBtn.addEventListener('touchend', handlePttRelease);
+    talkBtn.addEventListener('touchcancel', handlePttRelease);
+
+    talkBtn.addEventListener('click', () => {
+        if (currentMode !== 'toggle' || talkBtn.disabled) return;
+        isMuted = !isMuted;
+        syncMuteUI();
+    });
+
+    setMode(currentMode);
+
+    // Fetch and list all registered users
+    async function fetchDirectory() {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+            const users = await res.json();
+            const container = document.getElementById('allUsersList');
+            container.innerHTML = '';
+            users.forEach(u => {
+                container.innerHTML += `<div class="user-badge"><strong>${u.username}</strong><br><small>ID: ${u.id}</small></div>`;
+            });
+        }
+    }
+    fetchDirectory();
+
+    // ---------- WEBRTC & WEBSOCKET SETUP ----------
+    document.getElementById('joinBtn').onclick = async () => {
+        document.getElementById('joinBtn').disabled = true;
+
+        if (document.getElementById('keepAliveAudio')) {
+            document.getElementById('keepAliveAudio').play().catch(() => {});
+        }
+
+        await requestWakeLock();
+
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        talkBtn.disabled = false;
+        syncMuteUI();
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+        ws.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'welcome') {
+                myId = data.id;
+                myUsername = data.username;
+                document.getElementById('profileText').innerHTML = `Connected as: <strong>${myUsername}</strong> (ID: <code>${myId}</code>)`;
+                
+                // Connect to peers already online
+                for (const remote of data.existingPeers) {
+                    initiateConnection(remote.id, remote.username);
+                }
+            } 
+            else if (data.type === 'offer') {
+                await handleOffer(data.senderId, data.senderUsername, data.offer);
+            } 
+            else if (data.type === 'answer') {
+                await peerConnections[data.senderId].pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                await setSenderBitrate(peerConnections[data.senderId].pc, OPUS_MAX_BITRATE);
+            } 
+            else if (data.type === 'candidate') {
+                if (peerConnections[data.senderId]) {
+                    await peerConnections[data.senderId].pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                }
+            } 
+            else if (data.type === 'peer-left') {
+                removePeer(data.id);
+            }
+        };
+    };
+
+    function setupPeerConnection(remoteId, remoteUsername) {
+        const pc = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) {
+                ws.send(JSON.stringify({ type: 'candidate', targetId: remoteId, candidate: e.candidate }));
+            }
+        };
+
+        // Web Audio Pipeline
+        pc.ontrack = (event) => {
+            const source = audioCtx.createMediaStreamSource(event.streams[0]);
+
+            // Create Audio Processing Nodes
+            const gainNode = audioCtx.createGain();
+            const panNode = audioCtx.createStereoPanner();
+            const filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = "lowpass";
+
+            // Restore saved settings from cookies (or use defaults)
+            const saved = userAudioSettings[remoteId] || { volume: 1.0, pan: 0.0, filter: 10000 };
+            gainNode.gain.value = saved.volume;
+            panNode.pan.value = saved.pan;
+            filterNode.frequency.value = saved.filter;
+
+            // Connect graph: Source -> Filter -> Pan -> Gain -> Audio Destination
+            source.connect(filterNode);
+            filterNode.connect(panNode);
+            panNode.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            peerConnections[remoteId].gainNode = gainNode;
+            peerConnections[remoteId].panNode = panNode;
+            peerConnections[remoteId].filterNode = filterNode;
+
+            renderPeerCard(remoteId, remoteUsername, saved);
+        };
+
+        peerConnections[remoteId] = { pc, username: remoteUsername };
+        return pc;
+    }
+
+    async function setSenderBitrate(pc, maxBitrate) {
+        const senders = pc.getSenders();
+        const audioSender = senders.find(sender => sender.track && sender.track.kind === 'audio');
+
+        if (audioSender) {
+            const parameters = audioSender.getParameters();
+            if (!parameters.encodings || parameters.encodings.length === 0) {
+                parameters.encodings = [{}];
+            }
+            
+            // maxBitrate is specified in bits per second (bps)
+            parameters.encodings[0].maxBitrate = maxBitrate;
+            
+            try {
+                await audioSender.setParameters(parameters);
+                console.log(`Bitrate set to ${maxBitrate / 1000} kbps`);
+            } catch (err) {
+                console.warn('Could not set audio bitrate:', err);
+            }
+        }
+    }
+
+    async function initiateConnection(remoteId, remoteUsername) {
+        const pc = setupPeerConnection(remoteId, remoteUsername);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        ws.send(JSON.stringify({ type: 'offer', targetId: remoteId, offer }));
+
+        await setSenderBitrate(pc, OPUS_MAX_BITRATE);
+    }
+
+    async function handleOffer(remoteId, remoteUsername, offer) {
+        const pc = setupPeerConnection(remoteId, remoteUsername);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: 'answer', targetId: remoteId, answer }));
+        peerConnections[data.senderId].pc
+    }
+
+    function renderPeerCard(remoteId, username, saved) {
+        const container = document.getElementById('peersContainer');
+        const card = document.createElement('div');
+        card.className = 'peer-card';
+        card.id = `peer-${remoteId}`;
+        card.innerHTML = `
+            <h4>${username} <span style="font-weight:normal;font-size:0.8rem;color:#666;">(${remoteId})</span></h4>
+            <div class="control">
+                <label>Volume</label>
+                <input type="range" min="0" max="2" step="0.05" value="${saved.volume}" 
+                    oninput="updateGain('${remoteId}', this.value)">
+            </div>
+            <div class="control">
+                <label>Pan (L/R)</label>
+                <input type="range" min="-1" max="1" step="0.1" value="${saved.pan}" 
+                    oninput="updatePan('${remoteId}', this.value)">
+            </div>
+            <div class="control">
+                <label>Muffle Filter</label>
+                <input type="range" min="400" max="10000" step="200" value="${saved.filter}" 
+                    oninput="updateFilter('${remoteId}', this.value)">
+            </div>
+        `;
+        container.appendChild(card);
+    }
+
+    function removePeer(remoteId) {
+        if (peerConnections[remoteId]) {
+            peerConnections[remoteId].pc.close();
+            delete peerConnections[remoteId];
+        }
+        const card = document.getElementById(`peer-${remoteId}`);
+        if (card) card.remove();
+    }
+
+    // Audio modification and cookie persistence callbacks
+    window.updateGain = (id, val) => {
+        if (peerConnections[id]?.gainNode) peerConnections[id].gainNode.gain.value = parseFloat(val);
+        saveSetting(id, 'volume', val);
+    };
+
+    window.updatePan = (id, val) => {
+        if (peerConnections[id]?.panNode) peerConnections[id].panNode.pan.value = parseFloat(val);
+        saveSetting(id, 'pan', val);
+    };
+
+    window.updateFilter = (id, val) => {
+        if (peerConnections[id]?.filterNode) peerConnections[id].filterNode.frequency.value = parseFloat(val);
+        saveSetting(id, 'filter', val);
+    };
+</script>
+</body>
+</html>

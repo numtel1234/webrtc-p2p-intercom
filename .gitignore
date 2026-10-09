@@ -1,0 +1,6 @@
+.venv/
+.env
+*.db
+*.crt
+*.key
+*.pem

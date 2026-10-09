@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Added viewport meta tag with viewport-fit for mobile scaling and notched screens -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>P2P Intercom - Login</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        /* dvh accounts for mobile address bar expanding/collapsing */
+        min-height: 100vh;
+        min-height: 100dvh;
+        background: #eef2f5;
+        margin: 0;
+        /* Padding to prevent edge clinging on small screens + notch safe area */
+        padding: 1.25rem;
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+      }
+      .box {
+        background: #fff;
+        padding: 2rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        width: 100%;
+        max-width: 360px;
+      }
+      h2 {
+        margin-top: 0;
+        margin-bottom: 1.25rem;
+        font-size: 1.5rem;
+        text-align: center;
+      }
+      input {
+        width: 100%;
+        /* 16px font-size prevents iOS Safari from auto-zooming into inputs */
+        font-size: 16px;
+        padding: 14px 12px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        transition: border-color 0.2s;
+      }
+      input:focus {
+        border-color: #007bff;
+      }
+      button {
+        width: 100%;
+        font-size: 16px;
+        font-weight: 600;
+        /* 48px minimum height ensures reliable touch targeting */
+        min-height: 48px;
+        padding: 12px;
+        margin-top: 8px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        transition: background-color 0.15s ease;
+      }
+      /* Active state for mobile touch feedback */
+      button:active {
+        background: #0056b3;
+      }
+      .error {
+        color: #d32f2f;
+        font-size: 0.9rem;
+        margin-top: 12px;
+        text-align: center;
+        min-height: 1.2em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h2>Login</h2>
+      <!-- Added mobile-friendly input attributes (autocapitalize, autocomplete) -->
+      <input type="text" id="username" placeholder="Username" autocomplete="username" autocapitalize="none" required />
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
+      <button onclick="handleLogin()">Sign In</button>
+      <div id="errorMsg" class="error"></div>
+    </div>
+
+    <script>
+      async function handleLogin() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const errorMsg = document.getElementById("errorMsg");
+        errorMsg.innerText = "";
+
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // Also store auth token in document.cookie explicitly on front-end
+          document.cookie = `auth_token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+          window.location.href = "/";
+        } else {
+          errorMsg.innerText = data.error || "Login failed";
+        }
+      }
+    </script>
+  </body>
+</html>
